@@ -1,4 +1,2 @@
 ﻿  2DPhysicEngine.cpp
-D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(140,15): warning C4244: return: преобразование "double" в "float", возможна потеря данных
-D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(225,19): warning C4305: инициализация: усечение из "double" в "float"
   2DPhysicEngine.vcxproj -> D:\Projects\2DPhysicEngine\x64\Debug\2DPhysicEngine.exe
