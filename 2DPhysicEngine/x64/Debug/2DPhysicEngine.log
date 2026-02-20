@@ -1,21 +1,22 @@
 ﻿  2DPhysicEngine.cpp
-D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(166,16): warning C4244: аргумент: преобразование "double" в "float", возможна потеря данных
-D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(243,41): warning C4244: аргумент: преобразование "T" в "T", возможна потеря данных
-D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(243,41): warning C4244:         with
-D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(243,41): warning C4244:         [
-D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(243,41): warning C4244:             T=int
-D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(243,41): warning C4244:         ]
-D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(243,41): warning C4244:         and
-D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(243,41): warning C4244:         [
-D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(243,41): warning C4244:             T=float
-D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(243,41): warning C4244:         ]
-D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(243,32): warning C4244: аргумент: преобразование "T" в "T", возможна потеря данных
-D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(243,32): warning C4244:         with
-D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(243,32): warning C4244:         [
-D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(243,32): warning C4244:             T=int
-D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(243,32): warning C4244:         ]
-D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(243,32): warning C4244:         and
-D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(243,32): warning C4244:         [
-D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(243,32): warning C4244:             T=float
-D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(243,32): warning C4244:         ]
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(48,41): warning C4244: =: преобразование "long double" в "float", возможна потеря данных
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(202,16): warning C4244: аргумент: преобразование "double" в "float", возможна потеря данных
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(283,45): warning C4244: аргумент: преобразование "T" в "T", возможна потеря данных
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(283,45): warning C4244:         with
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(283,45): warning C4244:         [
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(283,45): warning C4244:             T=int
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(283,45): warning C4244:         ]
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(283,45): warning C4244:         and
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(283,45): warning C4244:         [
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(283,45): warning C4244:             T=float
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(283,45): warning C4244:         ]
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(283,36): warning C4244: аргумент: преобразование "T" в "T", возможна потеря данных
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(283,36): warning C4244:         with
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(283,36): warning C4244:         [
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(283,36): warning C4244:             T=int
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(283,36): warning C4244:         ]
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(283,36): warning C4244:         and
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(283,36): warning C4244:         [
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(283,36): warning C4244:             T=float
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(283,36): warning C4244:         ]
   2DPhysicEngine.vcxproj -> D:\Projects\2DPhysicEngine\x64\Debug\2DPhysicEngine.exe
