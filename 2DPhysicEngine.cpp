@@ -10,20 +10,125 @@ using namespace sf;
 
 class PhysBody abstract 
 {
-public:
+protected:
 	Vector2f position;
 	Vector2f velocity = { 0, 0 }; // speed
 	Vector2f acceleration = { 0, 0 }; //ускорение
 	float resilience = 0.8f; // коэф упругость
 	Vector2f force_accum = { 0, 0 };
+	Vector2f normal;
+	
 	float mass;
+	float inv_mass;
 	float height;
 	float width;
 
+public:
 	virtual ~PhysBody() = default;
+
 	void AddForce(Vector2f force)
 	{
 		force_accum += force;
+	}
+
+	void SetPosition(Vector2f position)
+	{
+		this->position = position;
+	}
+
+	void SetVelocity(Vector2f velocity)
+	{
+		this->velocity = velocity;
+	}
+
+	void SetAcceleration(Vector2f acceleration)
+	{
+		this->acceleration = acceleration;
+	}
+
+	void SetResilience(float resilience)
+	{
+		this->resilience = resilience;
+	}
+
+	void SetForce(Vector2f force)
+	{
+		this->force_accum = force;
+	}
+
+	void SetNormal(Vector2f normal)
+	{
+		this->normal = normal;
+	}
+
+	void SetMass(float mass)
+	{
+		this->mass = mass;
+	}
+
+	void SetInvMass(float inv_mass)
+	{
+		this->inv_mass = inv_mass;
+	}
+
+	void SetHeight(float height)
+	{
+		this->height = height;
+	}
+
+	void SetWidth(float width)
+	{
+		this->width = width;
+	}
+
+	Vector2f GetPosition()
+	{
+		return position;
+	}
+
+	Vector2f GetVelocity()
+	{
+		return velocity;
+	}
+
+	Vector2f GetAcceleration()
+	{
+		return acceleration;
+	}
+
+	float GetResilience()
+	{
+		return resilience;
+	}
+	
+	Vector2f GetForce()
+	{
+		return force_accum;
+	}
+
+	Vector2f GetNormal()
+	{
+		return normal;
+	}
+
+	float GetMass()
+	{
+		return mass;
+	}
+
+	float GetInvMass()
+	{
+		return inv_mass;
+	}
+
+	float GetHeight()
+	{
+		return height;
+	}
+
+	float GetWidth()
+	{
+		return width;
 	}
 
 	Vector2f GetCenter()
@@ -32,162 +137,69 @@ public:
 	}
 };
 
-class AABB : public PhysBody
-{
-
-};
-
-class RigidBody : public PhysBody
-{
-public:
-	RigidBody(float radius, Vector2f position)
-	{
-		height = radius * 2;
-		width = radius * 2;
-		this->position = position;
-		mass = (0.5 * height * height * M_PI) / 1000;
-	}
-};
-
-class Ball { // decide what do with class wrapper
-public:
-	Vector2f position;
-	RigidBody* physics;
-	CircleShape* visual;
-	Vector2f normal;
-
-	Vector2f GetCenter()
-	{
-
-	}
-
-	void SetPosition(Vector2f& pos)
-	{
-		position = pos;
-	}
-
-};
-
-// rewrite method KeepInBounds because of problem with stucking circle objects
-// optimize the Distance method
-// organize code, transfer methods which useful for circle objects to thir own class
-
 class PhysicEngine
 {
-	vector<PhysBody*> objects;
+	//vector<PhysBody*> objects;
 	Vector2f gravity = { 0, 500.0f }; //for monitor would be better use 980 raither our 9.8 for gravity, here I use 400 for more smooth but not like in moon(300.0f)
 	Vector2u size;
 	float resistance = 0.2f;
 	float air_resistance = 0.1f;
 public:
-	void KeepInBound()
-	{
-		for(auto i : objects)
-		{
-			if (abs(i->velocity.x) < 0.1f) i->velocity.x = 0;
-			if (abs(i->velocity.y) < 0.1f) i->velocity.y = 0;
 
-			if (i->position.y + i->height >= size.y)
-			{
-				i->position.y = size.y - i->height;
-				i->velocity.y = -i->velocity.y * i->resilience;
-				i->velocity.x *= resistance;
-			}
-			if (i->position.y + i->height < i->height)
-			{
-				i->position.y = 0;
-				i->velocity.y = -i->velocity.y * i->resilience;
-			}
-			if (i->position.x + i->width >= size.x)
-			{
-				i->position.x = size.x - i->width;
-				i->velocity.x = -i->velocity.x * i->resilience;
-				i->velocity.x *= 0.95f;
-			}
-			if (i->position.x + i->width < i->width)
-			{
-				i->position.x = 0;
-				i->velocity.x = -i->velocity.x * i->resilience; 	
-
-			}
-		}
-	}
-
-	void AddObj(PhysBody* obj)
+	PhysicEngine(Vector2u size) : size(size) {}
+	/*void AddObj(PhysBody* obj)
 	{
 		objects.push_back(obj);
-	}
+	}*/
 
-	void ApplyGravity(PhysBody* obj)
+	/*void ApplyGravity(PhysBody* obj)
 	{
 		obj->acceleration = -gravity;
+	}*/
+
+	void SetGravity(Vector2f& gravity)
+	{
+		this->gravity = gravity;
 	}
 
-	void Update(float dt)
+	void SetSize(Vector2u& size)
 	{
-		if (dt > 0.1f) dt = 0.1f;
-		for (auto i : objects)
-		{
-			Vector2f drag_force = -i->velocity * air_resistance;
-			Vector2f Ftotal = i->force_accum + (gravity * i->mass) + drag_force;
-	
-			i->acceleration = Ftotal / i->mass;
-
-			i->velocity += i->acceleration * dt;
-
-			i->position += i->velocity * dt;
-		
-			i->force_accum = { 0, 0 };
-		}
-		KeepInBound();
+		this->size = size;
 	}
 
-	void ResolveCollision()
+	void SetResistance(float resistance)
 	{
-		for(int i = 0; i < objects.size(); i++)
-		{
-			for(int j = i + 1; j < objects.size(); j++)
-			{			
-				if (Distance(Vector2f( objects[i]->GetCenter().x, objects[i]->GetCenter().y), Vector2f(objects[j]->GetCenter().x, objects[j]->GetCenter().y)) < (objects[i]->width / 2 + objects[j]->width / 2)) // only for circles
-				{
-					float mass = 1 / objects[i]->mass + 1 / objects[j]->mass; // вес
+		this->resistance = resistance;
+	}
 
-					Vector2f pos_diff = objects[i]->GetCenter() - objects[j]->GetCenter(); // разница между расстояниями
-					Vector2f velocity_diff = objects[i]->velocity - objects[j]->velocity; // разница скорости
+	void SetAirResistance(float air_resistance)
+	{
+		this->air_resistance = air_resistance;
+	}
 
-					float dist = Distance(objects[i]->GetCenter(), objects[j]->GetCenter());
-					float e = min(objects[i]->resilience, objects[j]->resilience);
-					if (dist < 0.001f) dist = 0.001f;
-					Vector2f normal = pos_diff / dist;
-					
-					float scalar = velocity_diff.x * normal.x + velocity_diff.y * normal.y;
-					float impulse = -(1 + e) * scalar / mass;
-					
-					Vector2f jm = normal * impulse;
-					
-					//cout << objects[i]->velocity.x << " " << objects[i]->velocity.y << "\n";
-					//cout << objects[j]->velocity.x << " " << objects[j]->velocity.y << "\n";
+	Vector2f GetGravity()
+	{
+		return gravity;
+	}
 
-					objects[i]->velocity += jm / objects[i]->mass; // обмен скоростями
-					objects[j]->velocity -= jm / objects[j]->mass;
+	Vector2u GetSize()
+	{
+		return size;
+	}
 
-					float penetration = (objects[i]->height / 2 + objects[j]->height / 2) - Distance(objects[i]->GetCenter(), objects[j]->GetCenter());
+	float GetResistance()
+	{
+		return resistance;
+	}
 
-					float percent = 0.8f;
-					float slop = 0.01f;
-
-					Vector2f correction = normal * (max(penetration - slop, 0.0f) / (1 / objects[i]->mass + 1 / objects[j]->mass) * percent);
-
-					objects[i]->position += correction / objects[i]->mass; // обмен скоростями
-					objects[j]->position -= correction / objects[j]->mass;
-				}
-			}
-		}
+	float GetAirResistance()
+	{
+		return air_resistance;
 	}
 
 	void PositionCorrection(PhysBody* obj1, PhysBody* obj2)// redo 
 	{
-		
+
 	}
 
 	void ApplyForce(Vector2f force)
@@ -200,17 +212,194 @@ public:
 		this->size = size;
 	}
 
-	float Distance(Vector2f first, Vector2f second) // rewrite function
-	{
-		return sqrtf((pow((first.x - second.x), 2) + pow((first.y - second.y), 2)));
-	}
-
-	vector<PhysBody*> GetObjects()
+	/*vector<PhysBody*> GetObjects()
 	{
 		return objects;
+	}*/
+};
+
+
+class AABB : public PhysBody
+{
+
+};
+
+
+class RigidBody : public PhysBody
+{
+public:
+	RigidBody(float radius, Vector2f position)
+	{
+		height = radius * 2;
+		width = radius * 2;
+		this->position = position;
+		mass = (0.5 * height * height * M_PI) / 1000;
+	}
+
+	float Distance(Vector2f first, Vector2f second) 
+	{
+		return sqrt(pow(first.x - second.x, 2) + pow(first.y - second.y, 2));
+	}
+
+	void KeepInBound(PhysicEngine* engine)
+	{
+		if (abs(velocity.x) < 0.1f) velocity.x = 0;
+		if (abs(velocity.y) < 0.1f) velocity.y = 0;
+
+		if (position.y + height >= engine->GetSize().y)
+		{
+			position.y = engine->GetSize().y - height;
+			velocity.y = -velocity.y * resilience;
+			velocity.x *= engine->GetResistance();
+		}
+		if (position.y + height < height)
+		{
+			position.y = 0;
+			velocity.y = -velocity.y * resilience;
+		}
+		if (position.x + width >= engine->GetSize().x)
+		{
+			position.x = engine->GetSize().x - width;
+			velocity.x = -velocity.x * resilience;
+			velocity.x *= 0.95f;
+		}
+		if (position.x + width < width)
+		{
+			position.x = 0;
+			velocity.x = -velocity.x * resilience;
+		}
+	}
+
+	void Update(PhysicEngine* eng, float dt)
+	{
+		if (dt > 0.1f) dt = 0.1f;
+		
+		Vector2f drag_force = -velocity * eng->GetAirResistance();
+		Vector2f Ftotal = force_accum + (eng->GetGravity() * mass) + drag_force;
+
+		acceleration = Ftotal / mass;
+
+		velocity += acceleration * dt;
+
+		position += velocity * dt;
+
+		force_accum = { 0, 0 };
+		
+		KeepInBound(eng);
+	}
+
+	void ResolveCollision(RigidBody* obj) // rewrite with inv_mass
+	{
+		if (Distance(GetCenter(), obj->GetCenter()) < (this->width / 2 + obj->width / 2)) // only for circles
+		{
+			float m = 1 / mass + 1 / obj->mass; // вес
+
+			Vector2f pos_diff = GetCenter() - obj->GetCenter(); // разница между расстояниями
+			Vector2f velocity_diff = velocity - obj->velocity; // разница скорости
+
+			float dist = Distance(GetCenter(), obj->GetCenter());
+			float e = min(resilience, obj->resilience);
+			if (dist < 0.001f) dist = 0.001f;
+			normal = pos_diff / dist;
+
+			float scalar = velocity_diff.x * normal.x + velocity_diff.y * normal.y;
+			float impulse = -(1 + e) * scalar / m;
+
+			Vector2f jm = normal * impulse;
+
+
+			velocity += jm / mass; // обмен скоростями
+			obj->velocity -= jm / obj->mass;
+
+			float penetration = (height / 2 + obj->height / 2) - Distance(GetCenter(), obj->GetCenter());
+
+			float percent = 0.8f;
+			float slop = 0.01f;
+
+			Vector2f correction = normal * (max(penetration - slop, 0.0f) / (1 / mass + 1 / obj->mass) * percent);
+
+			position += correction / mass; // обмен скоростями
+			obj->position -= correction / obj->mass;
+		}
+
+	}
+
+	Vector2f GetPosition()
+	{
+		return position;
 	}
 };
 
+class Ball { // decide what do with class wrapper
+	RigidBody* physics;
+	CircleShape* visual;
+	Color color;
+
+public:
+	Ball(float radius, Vector2f position)
+	{
+		physics = new RigidBody(radius, position);
+		visual = new CircleShape();
+		visual->setPosition(position);
+		visual->setRadius(radius);
+		visual->setOrigin({radius, radius});
+	}
+
+	Vector2f GetCenter()
+	{
+		return physics->GetCenter();
+	}
+
+	void SetRadius(float radius)
+	{
+		physics->SetHeight(radius);
+		physics->SetWidth(radius);
+		visual->setRadius(radius);
+	}
+
+	float GetRadius()
+	{
+		return physics->GetHeight();
+	}
+
+	void SetColor(Color color)
+	{
+		this->color = color;
+		visual->setFillColor(color);
+	}
+
+	Color GetColor()
+	{
+		return color;
+	}
+
+	Vector2f GetPosition()
+	{
+		return physics->GetPosition();	
+	}
+
+	CircleShape& GetVisual()
+	{
+		return *visual;
+	}
+
+	void Update(PhysicEngine* eng, float dt)
+	{
+		physics->Update(eng, dt);
+		visual->setPosition(physics->GetPosition());
+	}
+
+	void ResolveCollision(Ball* ball)
+	{
+		physics->ResolveCollision(ball->physics);
+		visual->setPosition(physics->GetPosition());
+		ball->visual->setPosition(ball->physics->GetPosition());
+	}
+};
+
+// rewrite method KeepInBounds because of problem with stucking circle objects
+// organize code, transfer methods which useful for circle objects to their own class
+//rewrite interaction
 class MouseInteraction {
 public:
 	void MouseVoid(vector<PhysBody*>& objects, Vector2f mouse_pos, float radius, float strength)
@@ -235,67 +424,34 @@ public:
 
 int main() 
 {
-	RenderWindow* window = new RenderWindow(VideoMode({ 800, 600 }), "2d physics");
-
-	PhysicEngine eng;
-	eng.SetSize(window->getSize());
-	CircleShape circle1(20);
-	circle1.setFillColor(Color::White);
-	circle1.setPosition({ 100, 10 });
-	CircleShape circle2(20);
-	circle2.setFillColor(Color::White);
-	circle2.setPosition({ 100, 100 });
-	CircleShape circle3(20);
-	circle3.setFillColor(Color::White);
-	circle3.setPosition({ 300, 100 });
-	CircleShape circle4(30);
-	circle4.setFillColor(Color::White);
-	circle4.setPosition({ 700, 100 });
-	CircleShape circle5(10);
-	circle5.setFillColor(Color::White);
-	circle5.setPosition({ 500, 100 });
-	Clock clock;
-	RigidBody circle_body1(circle1.getRadius(), circle1.getPosition());
-	RigidBody circle_body2(circle2.getRadius(), circle2.getPosition());
-	RigidBody circle_body3(circle3.getRadius(), circle3.getPosition());
-	RigidBody circle_body4(circle4.getRadius(), circle4.getPosition());
-	RigidBody circle_body5(circle5.getRadius(), circle5.getPosition());
+	Vector2u size = { 1000, 700 };
+	RenderWindow window = RenderWindow(VideoMode(size), "PhysicEngine");
+	PhysicEngine eng = PhysicEngine(size);
 
 	MouseInteraction m;
-	eng.AddObj(&circle_body1);
-	eng.AddObj(&circle_body2);
-	eng.AddObj(&circle_body3);
-	eng.AddObj(&circle_body4);
-	eng.AddObj(&circle_body5);
-	while (window->isOpen())
+
+	Ball* ball1 = new Ball(20, {100, 10});
+	ball1->SetColor(Color::White);
+	Clock clock;
+	while (window.isOpen())
 	{
+		window.clear();
 		float dt = clock.restart().asSeconds();
-		window->clear();
-		
-		while (optional<Event> event = window->pollEvent())
+		while (optional<Event> event = window.pollEvent())
 		{
 			if (event->is<Event::Closed>())
-				window->close();
+				window.close();	
+			
 		}
-		eng.Update(dt);
-		eng.ResolveCollision();
 		if (Mouse::isButtonPressed(Mouse::Button::Left))
 		{
-			Vector2i mouse = Mouse::getPosition(*window);
-			auto temp = eng.GetObjects();
+			Vector2i mouse = Mouse::getPosition(window);
 			m.MouseVoid(temp, Vector2f(mouse.x, mouse.y), 100.0f, 1000000.0f);
 		}
+		ball1->Update(&eng, dt);
+		//ball1->ResolveCollision();
 
-		circle1.setPosition(circle_body1.position);
-		circle2.setPosition(circle_body2.position);
-		circle3.setPosition(circle_body3.position);
-		circle4.setPosition(circle_body4.position);
-		circle5.setPosition(circle_body5.position);
-		window->draw(circle1);
-		window->draw(circle2);
-		window->draw(circle3);
-		window->draw(circle4);
-		window->draw(circle5);
-		window->display();
+		window.draw(ball1->GetVisual());
+		window.display();
 	}
 }
