@@ -17,6 +17,8 @@ protected:
 	float resilience = 0.8f; // коэф упругость
 	Vector2f force_accum = { 0, 0 };
 	Vector2f normal;
+	float angle; // angle rotatio in radians
+	float angular_velocity; // speed with which object rotates
 	
 	float mass;
 	float inv_mass;
@@ -142,8 +144,8 @@ class PhysicEngine
 	//vector<PhysBody*> objects;
 	Vector2f gravity = { 0, 500.0f }; //for monitor would be better use 980 raither our 9.8 for gravity, here I use 400 for more smooth but not like in moon(300.0f)
 	Vector2u size;
-	float resistance = 0.2f;
-	float air_resistance = 0.1f;
+	float resistance = 0.98f;
+	float air_resistance = 0.01f;
 public:
 
 	PhysicEngine(Vector2u size) : size(size) {}
@@ -224,7 +226,6 @@ class AABB : public PhysBody
 
 };
 
-
 class RigidBody : public PhysBody
 {
 public:
@@ -243,30 +244,34 @@ public:
 
 	void KeepInBound(PhysicEngine* engine)
 	{
-		if (abs(velocity.x) < 0.1f) velocity.x = 0;
-		if (abs(velocity.y) < 0.1f) velocity.y = 0;
+		if (position.x + (width / 2) >= engine->GetSize().x)
+		{
+			position.x = engine->GetSize().x - (width / 2);
+			if (velocity.x > 0) velocity.x = -velocity.x * resilience;
+		}
 
-		if (position.y + height >= engine->GetSize().y)
+		else if (position.x - (width / 2) <= 0)
 		{
-			position.y = engine->GetSize().y - height;
-			velocity.y = -velocity.y * resilience;
-			velocity.x *= engine->GetResistance();
+			position.x = width / 2;
+			if (velocity.x < 0) velocity.x = -velocity.x * resilience;
 		}
-		if (position.y + height < height)
+
+		if (position.y + (height / 2) >= engine->GetSize().y)
 		{
-			position.y = 0;
-			velocity.y = -velocity.y * resilience;
+			position.y = engine->GetSize().y - (height / 2);
+			if (velocity.y > 0)
+			{
+				velocity.y = -velocity.y * resilience;
+				velocity.x *= engine->GetResistance();
+			}
+			if (abs(velocity.y) < 5.0f) velocity.y = 0;
 		}
-		if (position.x + width >= engine->GetSize().x)
+
+		else if (position.y - (height / 2) <= 0)
 		{
-			position.x = engine->GetSize().x - width;
-			velocity.x = -velocity.x * resilience;
-			velocity.x *= 0.95f;
-		}
-		if (position.x + width < width)
-		{
-			position.x = 0;
-			velocity.x = -velocity.x * resilience;
+			position.y = height / 2;
+			if (velocity.y < 0) velocity.y = -velocity.y * resilience;
+			
 		}
 	}
 
@@ -280,12 +285,12 @@ public:
 		acceleration = Ftotal / mass;
 
 		velocity += acceleration * dt;
-
+		
 		position += velocity * dt;
-
-		force_accum = { 0, 0 };
 		
 		KeepInBound(eng);
+
+		force_accum = { 0, 0 };
 	}
 
 	void ResolveCollision(RigidBody* obj) // rewrite with inv_mass
@@ -330,7 +335,15 @@ public:
 	}
 };
 
-class Ball { // decide what do with class wrapper
+class IMouseTouchable
+{
+public:
+	virtual Vector2f GetCenter() = 0;
+	
+	virtual void AddForce(Vector2f force) = 0;
+}; 
+
+class Ball : public IMouseTouchable { // decide what do with class wrapper
 	RigidBody* physics;
 	CircleShape* visual;
 	Color color;
@@ -395,14 +408,22 @@ public:
 		visual->setPosition(physics->GetPosition());
 		ball->visual->setPosition(ball->physics->GetPosition());
 	}
+
+	void AddForce(Vector2f force)
+	{
+		physics->AddForce(force);
+		visual->setPosition(physics->GetPosition());
+	}
 };
 
 // rewrite method KeepInBounds because of problem with stucking circle objects
 // organize code, transfer methods which useful for circle objects to their own class
 //rewrite interaction
+
 class MouseInteraction {
+	vector<IMouseTouchable*> objects;
 public:
-	void MouseVoid(vector<PhysBody*>& objects, Vector2f mouse_pos, float radius, float strength)
+	void MouseVoid(Vector2f mouse_pos, float radius, float strength)
 	{
 		for (auto i : objects)
 		{
@@ -420,6 +441,23 @@ public:
 			}
 		}
 	}
+
+	void AddObject(IMouseTouchable* phys_obj)
+	{
+		objects.push_back(phys_obj);
+	}
+
+	void DeleteObject(IMouseTouchable* obj)
+	{
+		for (int i = 0; i < objects.size(); i++)
+		{
+			if (objects[i] == obj)
+			{
+				objects.erase(objects.begin() + i);
+				break;
+			}
+		}
+	}
 };
 
 int main() 
@@ -428,11 +466,16 @@ int main()
 	RenderWindow window = RenderWindow(VideoMode(size), "PhysicEngine");
 	PhysicEngine eng = PhysicEngine(size);
 
-	MouseInteraction m;
-
 	Ball* ball1 = new Ball(20, {100, 10});
 	ball1->SetColor(Color::White);
+	Ball* ball2 = new Ball(20, { 100, 30 });
+	ball1->SetColor(Color::White);
 	Clock clock;
+
+	MouseInteraction m;
+	m.AddObject(ball1);
+	m.AddObject(ball2);
+
 	while (window.isOpen())
 	{
 		window.clear();
@@ -443,15 +486,19 @@ int main()
 				window.close();	
 			
 		}
+
 		if (Mouse::isButtonPressed(Mouse::Button::Left))
 		{
 			Vector2i mouse = Mouse::getPosition(window);
-			m.MouseVoid(temp, Vector2f(mouse.x, mouse.y), 100.0f, 1000000.0f);
+			m.MouseVoid(Vector2f(mouse.x, mouse.y), 100.0f, 1000000.0f);
 		}
+		ball1->ResolveCollision(ball2);
+
 		ball1->Update(&eng, dt);
-		//ball1->ResolveCollision();
+		ball2->Update(&eng, dt);
 
 		window.draw(ball1->GetVisual());
+		window.draw(ball2->GetVisual());
 		window.display();
 	}
 }

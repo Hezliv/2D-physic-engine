@@ -1,4 +1,22 @@
 ﻿  2DPhysicEngine.cpp
-D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(236,41): warning C4244: =: преобразование "long double" в "float", возможна потеря данных
-D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(241,14): warning C4244: return: преобразование "double" в "float", возможна потеря данных
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(235,41): warning C4244: =: преобразование "long double" в "float", возможна потеря данных
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(240,14): warning C4244: return: преобразование "double" в "float", возможна потеря данных
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(491,39): warning C4244: аргумент: преобразование "T" в "T", возможна потеря данных
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(491,39): warning C4244:         with
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(491,39): warning C4244:         [
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(491,39): warning C4244:             T=int
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(491,39): warning C4244:         ]
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(491,39): warning C4244:         and
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(491,39): warning C4244:         [
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(491,39): warning C4244:             T=float
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(491,39): warning C4244:         ]
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(491,30): warning C4244: аргумент: преобразование "T" в "T", возможна потеря данных
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(491,30): warning C4244:         with
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(491,30): warning C4244:         [
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(491,30): warning C4244:             T=int
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(491,30): warning C4244:         ]
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(491,30): warning C4244:         and
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(491,30): warning C4244:         [
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(491,30): warning C4244:             T=float
+D:\Projects\2DPhysicEngine\2DPhysicEngine.cpp(491,30): warning C4244:         ]
   2DPhysicEngine.vcxproj -> D:\Projects\2DPhysicEngine\x64\Debug\2DPhysicEngine.exe
