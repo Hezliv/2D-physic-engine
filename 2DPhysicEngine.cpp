@@ -144,7 +144,7 @@ class PhysicEngine
 	//vector<PhysBody*> objects;
 	Vector2f gravity = { 0, 500.0f }; //for monitor would be better use 980 raither our 9.8 for gravity, here I use 400 for more smooth but not like in moon(300.0f)
 	Vector2u size;
-	float resistance = 0.98f;
+	float resistance = 0.95f;
 	float air_resistance = 0.01f;
 public:
 
@@ -204,11 +204,6 @@ public:
 
 	}
 
-	void ApplyForce(Vector2f force)
-	{
-
-	}
-
 	void SetSize(Vector2u size)
 	{
 		this->size = size;
@@ -235,6 +230,7 @@ public:
 		width = radius * 2;
 		this->position = position;
 		mass = (0.5 * height * height * M_PI) / 1000;
+		inv_mass = 1 / mass;
 	}
 
 	float Distance(Vector2f first, Vector2f second) 
@@ -242,7 +238,7 @@ public:
 		return sqrt(pow(first.x - second.x, 2) + pow(first.y - second.y, 2));
 	}
 
-	void KeepInBound(PhysicEngine* engine)
+	void KeepInBound(PhysicEngine* engine, float dt)
 	{
 		if (position.x + (width / 2) >= engine->GetSize().x)
 		{
@@ -262,7 +258,8 @@ public:
 			if (velocity.y > 0)
 			{
 				velocity.y = -velocity.y * resilience;
-				velocity.x *= engine->GetResistance();
+				float rolling_frict = 0.95f;
+				velocity.x *= pow(rolling_frict, dt * 10.0f);
 			}
 			if (abs(velocity.y) < 5.0f) velocity.y = 0;
 		}
@@ -285,10 +282,12 @@ public:
 		acceleration = Ftotal / mass;
 
 		velocity += acceleration * dt;
-		
+		angular_velocity = velocity.x / (width / 2.0f);
+		angle += angular_velocity * dt;
+
 		position += velocity * dt;
 		
-		KeepInBound(eng);
+		KeepInBound(eng, dt);
 
 		force_accum = { 0, 0 };
 	}
@@ -297,7 +296,7 @@ public:
 	{
 		if (Distance(GetCenter(), obj->GetCenter()) < (this->width / 2 + obj->width / 2)) // only for circles
 		{
-			float m = 1 / mass + 1 / obj->mass; // вес
+			float m = inv_mass + obj->inv_mass; // вес
 
 			Vector2f pos_diff = GetCenter() - obj->GetCenter(); // разница между расстояниями
 			Vector2f velocity_diff = velocity - obj->velocity; // разница скорости
@@ -321,17 +320,21 @@ public:
 			float percent = 0.8f;
 			float slop = 0.01f;
 
-			Vector2f correction = normal * (max(penetration - slop, 0.0f) / (1 / mass + 1 / obj->mass) * percent);
+			Vector2f correction = normal * (max(penetration - slop, 0.0f) / (inv_mass + obj->inv_mass) * percent);
 
-			position += correction / mass; // обмен скоростями
+			position += correction / mass; 
 			obj->position -= correction / obj->mass;
 		}
-
 	}
 
 	Vector2f GetPosition()
 	{
 		return position;
+	}
+
+	void SetRotation(float radians)
+	{
+
 	}
 };
 
@@ -339,11 +342,11 @@ class IMouseTouchable
 {
 public:
 	virtual Vector2f GetCenter() = 0;
-	
+	virtual Vector2f GetSize() = 0;
 	virtual void AddForce(Vector2f force) = 0;
 }; 
 
-class Ball : public IMouseTouchable { // decide what do with class wrapper
+class Ball : public IMouseTouchable {
 	RigidBody* physics;
 	CircleShape* visual;
 	Color color;
@@ -363,6 +366,12 @@ public:
 		return physics->GetCenter();
 	}
 
+	Vector2f GetSize()
+	{
+		float diameter = GetRadius() * 2;
+		return Vector2f(diameter, diameter);
+	}
+
 	void SetRadius(float radius)
 	{
 		physics->SetHeight(radius);
@@ -372,7 +381,7 @@ public:
 
 	float GetRadius()
 	{
-		return physics->GetHeight();
+		return physics->GetHeight() / 2;
 	}
 
 	void SetColor(Color color)
@@ -422,14 +431,24 @@ public:
 
 class MouseInteraction {
 	vector<IMouseTouchable*> objects;
+	Vector2u window_size;
 public:
-	void MouseVoid(Vector2f mouse_pos, float radius, float strength)
+	MouseInteraction(Vector2u window_size) : window_size(window_size) {}
+
+	void MousePush(Vector2f mouse_pos, float radius, float strength, bool version = 1)
 	{
 		for (auto i : objects)
 		{
 			Vector2f center = i->GetCenter();
-			Vector2f diff = center - mouse_pos;
-
+			Vector2f diff;
+			if (version)
+			{
+				diff = center - Vector2f(mouse_pos);
+			}
+			else
+			{
+				diff = Vector2f(mouse_pos) - center;
+			}
 			float dist_sq = diff.x * diff.x + diff.y * diff.y;
 
 			if (dist_sq < radius * radius && dist_sq > 0)
@@ -437,7 +456,11 @@ public:
 				float dist = sqrt(dist_sq);
 				Vector2f force = (diff / dist) * (strength / dist);
 
+				if (i->GetCenter().y + i->GetSize().y / 2 != window_size.y && force.y > 0)
+					force.y = 0;
+
 				i->AddForce(force);
+
 			}
 		}
 	}
@@ -462,9 +485,9 @@ public:
 
 int main() 
 {
-	Vector2u size = { 1000, 700 };
-	RenderWindow window = RenderWindow(VideoMode(size), "PhysicEngine");
-	PhysicEngine eng = PhysicEngine(size);
+	Vector2u window_size = { 1000, 700 };
+	RenderWindow window = RenderWindow(VideoMode(window_size), "PhysicEngine");
+	PhysicEngine eng = PhysicEngine(window_size);
 
 	Ball* ball1 = new Ball(20, {100, 10});
 	ball1->SetColor(Color::White);
@@ -472,7 +495,7 @@ int main()
 	ball1->SetColor(Color::White);
 	Clock clock;
 
-	MouseInteraction m;
+	MouseInteraction m(window_size);
 	m.AddObject(ball1);
 	m.AddObject(ball2);
 
@@ -484,14 +507,19 @@ int main()
 		{
 			if (event->is<Event::Closed>())
 				window.close();	
-			
 		}
 
 		if (Mouse::isButtonPressed(Mouse::Button::Left))
 		{
-			Vector2i mouse = Mouse::getPosition(window);
-			m.MouseVoid(Vector2f(mouse.x, mouse.y), 100.0f, 1000000.0f);
+			Vector2i mouse_pos = Mouse::getPosition(window);
+			m.MousePush(Vector2f(mouse_pos.x, mouse_pos.y), 200.0f, 100000.0f);
 		}
+		else if (Mouse::isButtonPressed(Mouse::Button::Right))
+		{
+			Vector2i mouse_pos = Mouse::getPosition(window);
+			m.MousePush(Vector2f(mouse_pos.x, mouse_pos.y), window_size.x, 1000000.0f, 0);
+		}
+
 		ball1->ResolveCollision(ball2);
 
 		ball1->Update(&eng, dt);
