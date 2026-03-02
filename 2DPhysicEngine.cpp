@@ -8,9 +8,55 @@
 using namespace std;
 using namespace sf;
 
-class PhysBody abstract 
+
+
+class IMouseTouchable
+{
+public:
+	virtual Vector2f GetCenter() = 0;
+	virtual Vector2f GetSize() = 0;
+	virtual void AddForce(Vector2f force) = 0;
+};
+
+class AABB // it's border for collisions
+{
+
+};
+
+class ResultOfCollision //!!!!!!!!!!!!! to finish writing accessors
+{
+	Vector2f normal;
+	float penetration;
+	Vector2f contact_point;
+public:
+	void SetNormal(Vector2f normal)
+	{
+		this->normal = normal;
+	}
+};
+
+class Collider 
+{
+public:
+	virtual ~Collider() = default;
+
+	virtual bool Intersects(Collider& other, Vector2f self_pos, Vector2f other_pos, ResultOfCollision& res) = 0;
+
+	virtual AABB GetAABB(Vector2f pos) = 0;
+
+	enum class Type {Circle, Box};
+
+	virtual Type GetType() const = 0;
+};
+
+class PhysBody 
 {
 protected:
+	Collider* collider;
+	float mass;
+	float inv_mass;
+	float height;
+	float width;
 	Vector2f position;
 	Vector2f velocity = { 0, 0 }; // speed
 	Vector2f acceleration = { 0, 0 }; //ускорение
@@ -19,11 +65,6 @@ protected:
 	Vector2f normal;
 	float angle; // angle rotatio in radians
 	float angular_velocity; // speed with which object rotates
-	
-	float mass;
-	float inv_mass;
-	float height;
-	float width;
 
 public:
 	virtual ~PhysBody() = default;
@@ -31,11 +72,6 @@ public:
 	void AddForce(Vector2f force)
 	{
 		force_accum += force;
-	}
-
-	void SetPosition(Vector2f position)
-	{
-		this->position = position;
 	}
 
 	void SetVelocity(Vector2f velocity)
@@ -63,6 +99,11 @@ public:
 		this->normal = normal;
 	}
 
+	void SetPosition(Vector2f position)
+	{
+		this->position = position;
+	}
+
 	void SetMass(float mass)
 	{
 		this->mass = mass;
@@ -86,6 +127,26 @@ public:
 	Vector2f GetPosition()
 	{
 		return position;
+	}
+
+	float GetMass()
+	{
+		return mass;
+	}
+
+	float GetInvMass()
+	{
+		return inv_mass;
+	}
+
+	float GetHeight()
+	{
+		return height;
+	}
+
+	float GetWidth()
+	{
+		return width;
 	}
 
 	Vector2f GetVelocity()
@@ -113,220 +174,29 @@ public:
 		return normal;
 	}
 
-	float GetMass()
-	{
-		return mass;
-	}
-
-	float GetInvMass()
-	{
-		return inv_mass;
-	}
-
-	float GetHeight()
-	{
-		return height;
-	}
-
-	float GetWidth()
-	{
-		return width;
-	}
-
 	Vector2f GetCenter()
 	{
 		return position + Vector2f(width / 2.0f, height / 2.0f);
 	}
 };
 
-class PhysicEngine
-{
-	//vector<PhysBody*> objects;
-	Vector2f gravity = { 0, 500.0f }; //for monitor would be better use 980 raither our 9.8 for gravity, here I use 400 for more smooth but not like in moon(300.0f)
-	Vector2u size;
-	float resistance = 0.95f;
-	float air_resistance = 0.01f;
-public:
-
-	PhysicEngine(Vector2u size) : size(size) {}
-	/*void AddObj(PhysBody* obj)
-	{
-		objects.push_back(obj);
-	}*/
-
-	/*void ApplyGravity(PhysBody* obj)
-	{
-		obj->acceleration = -gravity;
-	}*/
-
-	void SetGravity(Vector2f& gravity)
-	{
-		this->gravity = gravity;
-	}
-
-	void SetSize(Vector2u& size)
-	{
-		this->size = size;
-	}
-
-	void SetResistance(float resistance)
-	{
-		this->resistance = resistance;
-	}
-
-	void SetAirResistance(float air_resistance)
-	{
-		this->air_resistance = air_resistance;
-	}
-
-	Vector2f GetGravity()
-	{
-		return gravity;
-	}
-
-	Vector2u GetSize()
-	{
-		return size;
-	}
-
-	float GetResistance()
-	{
-		return resistance;
-	}
-
-	float GetAirResistance()
-	{
-		return air_resistance;
-	}
-
-	void PositionCorrection(PhysBody* obj1, PhysBody* obj2)// redo 
-	{
-
-	}
-
-	void SetSize(Vector2u size)
-	{
-		this->size = size;
-	}
-
-	/*vector<PhysBody*> GetObjects()
-	{
-		return objects;
-	}*/
-};
-
-
-class AABB : public PhysBody
+class SoftBody : public PhysBody // soft body like jelly
 {
 
 };
 
-class RigidBody : public PhysBody
-{
+class RigidBody : public PhysBody // tough object
+{	
 public:
-	RigidBody(float radius, Vector2f position)
+	RigidBody(float width, float height, Vector2f position)
 	{
-		height = radius * 2;
-		width = radius * 2;
-		this->position = position;
+		height = height;
+		width = width;
+		this->collider->position = position;
 		mass = (0.5 * height * height * M_PI) / 1000;
 		inv_mass = 1 / mass;
 	}
-
-	float Distance(Vector2f first, Vector2f second) 
-	{
-		return sqrt(pow(first.x - second.x, 2) + pow(first.y - second.y, 2));
-	}
-
-	void KeepInBound(PhysicEngine* engine, float dt)
-	{
-		if (position.x + (width / 2) >= engine->GetSize().x)
-		{
-			position.x = engine->GetSize().x - (width / 2);
-			if (velocity.x > 0) velocity.x = -velocity.x * resilience;
-		}
-
-		else if (position.x - (width / 2) <= 0)
-		{
-			position.x = width / 2;
-			if (velocity.x < 0) velocity.x = -velocity.x * resilience;
-		}
-
-		if (position.y + (height / 2) >= engine->GetSize().y)
-		{
-			position.y = engine->GetSize().y - (height / 2);
-			if (velocity.y > 0)
-			{
-				velocity.y = -velocity.y * resilience;
-				float rolling_frict = 0.95f;
-				velocity.x *= pow(rolling_frict, dt * 10.0f);
-			}
-			if (abs(velocity.y) < 5.0f) velocity.y = 0;
-		}
-
-		else if (position.y - (height / 2) <= 0)
-		{
-			position.y = height / 2;
-			if (velocity.y < 0) velocity.y = -velocity.y * resilience;
-			
-		}
-	}
-
-	void Update(PhysicEngine* eng, float dt)
-	{
-		if (dt > 0.1f) dt = 0.1f;
-		
-		Vector2f drag_force = -velocity * eng->GetAirResistance();
-		Vector2f Ftotal = force_accum + (eng->GetGravity() * mass) + drag_force;
-
-		acceleration = Ftotal / mass;
-
-		velocity += acceleration * dt;
-		angular_velocity = velocity.x / (width / 2.0f);
-		angle += angular_velocity * dt;
-
-		position += velocity * dt;
-		
-		KeepInBound(eng, dt);
-
-		force_accum = { 0, 0 };
-	}
-
-	void ResolveCollision(RigidBody* obj) // rewrite with inv_mass
-	{
-		if (Distance(GetCenter(), obj->GetCenter()) < (this->width / 2 + obj->width / 2)) // only for circles
-		{
-			float m = inv_mass + obj->inv_mass; // вес
-
-			Vector2f pos_diff = GetCenter() - obj->GetCenter(); // разница между расстояниями
-			Vector2f velocity_diff = velocity - obj->velocity; // разница скорости
-
-			float dist = Distance(GetCenter(), obj->GetCenter());
-			float e = min(resilience, obj->resilience);
-			if (dist < 0.001f) dist = 0.001f;
-			normal = pos_diff / dist;
-
-			float scalar = velocity_diff.x * normal.x + velocity_diff.y * normal.y;
-			float impulse = -(1 + e) * scalar / m;
-
-			Vector2f jm = normal * impulse;
-
-
-			velocity += jm / mass; // обмен скоростями
-			obj->velocity -= jm / obj->mass;
-
-			float penetration = (height / 2 + obj->height / 2) - Distance(GetCenter(), obj->GetCenter());
-
-			float percent = 0.8f;
-			float slop = 0.01f;
-
-			Vector2f correction = normal * (max(penetration - slop, 0.0f) / (inv_mass + obj->inv_mass) * percent);
-
-			position += correction / mass; 
-			obj->position -= correction / obj->mass;
-		}
-	}
-
+	
 	Vector2f GetPosition()
 	{
 		return position;
@@ -338,92 +208,11 @@ public:
 	}
 };
 
-class IMouseTouchable
+class Sensor : public PhysBody // it's transparency, but it indicates if some body passed through
 {
-public:
-	virtual Vector2f GetCenter() = 0;
-	virtual Vector2f GetSize() = 0;
-	virtual void AddForce(Vector2f force) = 0;
-}; 
 
-class Ball : public IMouseTouchable {
-	RigidBody* physics;
-	CircleShape* visual;
-	Color color;
-
-public:
-	Ball(float radius, Vector2f position)
-	{
-		physics = new RigidBody(radius, position);
-		visual = new CircleShape();
-		visual->setPosition(position);
-		visual->setRadius(radius);
-		visual->setOrigin({radius, radius});
-	}
-
-	Vector2f GetCenter()
-	{
-		return physics->GetCenter();
-	}
-
-	Vector2f GetSize()
-	{
-		float diameter = GetRadius() * 2;
-		return Vector2f(diameter, diameter);
-	}
-
-	void SetRadius(float radius)
-	{
-		physics->SetHeight(radius);
-		physics->SetWidth(radius);
-		visual->setRadius(radius);
-	}
-
-	float GetRadius()
-	{
-		return physics->GetHeight() / 2;
-	}
-
-	void SetColor(Color color)
-	{
-		this->color = color;
-		visual->setFillColor(color);
-	}
-
-	Color GetColor()
-	{
-		return color;
-	}
-
-	Vector2f GetPosition()
-	{
-		return physics->GetPosition();	
-	}
-
-	CircleShape& GetVisual()
-	{
-		return *visual;
-	}
-
-	void Update(PhysicEngine* eng, float dt)
-	{
-		physics->Update(eng, dt);
-		visual->setPosition(physics->GetPosition());
-	}
-
-	void ResolveCollision(Ball* ball)
-	{
-		physics->ResolveCollision(ball->physics);
-		visual->setPosition(physics->GetPosition());
-		ball->visual->setPosition(ball->physics->GetPosition());
-	}
-
-	void AddForce(Vector2f force)
-	{
-		physics->AddForce(force);
-		visual->setPosition(physics->GetPosition());
-	}
 };
+
 
 // rewrite method KeepInBounds because of problem with stucking circle objects
 // organize code, transfer methods which useful for circle objects to their own class
@@ -483,6 +272,130 @@ public:
 	}
 };
 
+class PhysicEngine
+{
+	Vector2f gravity = { 0, 600.0f }; //for monitor would be better use 980 raither our 9.8 for gravity, here I use 400 for more smooth but not like in moon(300.0f)
+	Vector2u size; // size to which will rules of physic engine works
+	float resistance = 0.95f; // ground resistance
+	float air_resistance = 0.01f;
+public:
+
+	PhysicEngine(Vector2u size) : size(size) {}
+
+	void SetGravity(Vector2f& gravity)
+	{
+		this->gravity = gravity;
+	}
+
+	void SetSize(Vector2u& size)
+	{
+		this->size = size;
+	}
+
+	void SetResistance(float resistance)
+	{
+		this->resistance = resistance;
+	}
+
+	void SetAirResistance(float air_resistance)
+	{
+		this->air_resistance = air_resistance;
+	}
+
+	Vector2f GetGravity()
+	{
+		return gravity;
+	}
+
+	Vector2u GetSize()
+	{
+		return size;
+	}
+
+	float GetResistance()
+	{
+		return resistance;
+	}
+
+	float GetAirResistance()
+	{
+		return air_resistance;
+	}
+
+	void SetSize(Vector2u size)
+	{
+		this->size = size;
+	}
+
+	void CollisionSolve()
+	{
+
+	}
+
+	void Step()
+	{
+
+	}
+
+	void BoundCollision(PhysBody* obj, float dt)
+	{
+		if (obj->GetCenter().x + (obj->GetHeight() / 2) >= size.x)
+		{
+			obj->SetPosition({ size.x - (obj->GetHeight() / 2), obj->GetPosition().y });
+			if (obj->GetVelocity().x > 0) obj->SetVelocity({ -obj->GetVelocity().x * obj->GetResilience(), obj->GetVelocity().y });
+		}
+
+		else if (obj->GetCenter().x + (obj->GetHeight() / 2) <= 0)
+		{
+			position.x = width / 2;
+			if (velocity.x < 0) velocity.x = -velocity.x * resilience;
+		}
+
+		if (obj->GetCenter().y + (obj->GetHeight() / 2) >= size.y)
+		{
+			obj->SetPosition({ obj->GetPosition().x, size.y - (obj->GetHeight() / 2) });
+			if (obj->GetVelocity().y > 0)
+			{
+				obj->SetVelocity({ obj->GetVelocity().x, -obj->GetVelocity().y * obj->GetResilience() });
+				float rolling_frict = 0.95f;
+				velocity.x *= pow(rolling_frict, dt * 10.0f);
+			}
+			if (abs(velocity.y) < 5.0f) velocity.y = 0;
+		}
+
+		else if (obj->GetCenter().y + (obj->GetHeight() / 2) <= 0)
+		{
+			position.y = height / 2;
+			if (velocity.y < 0) velocity.y = -velocity.y * resilience;
+
+		}
+	}
+
+	float Distance(Vector2f first, Vector2f second)
+	{
+		return sqrt(pow(first.x - second.x, 2) + pow(first.y - second.y, 2));
+	}
+
+	void Integration(PhysicEngine* eng, float dt)
+	{
+		if (dt > 0.1f) dt = 0.1f;
+
+		Vector2f drag_force = -velocity * eng->GetAirResistance();
+		Vector2f Ftotal = force_accum + (eng->GetGravity() * mass) + drag_force;
+
+		acceleration = Ftotal / mass;
+
+		velocity += acceleration * dt;
+		angular_velocity = velocity.x / (width / 2.0f);
+		angle += angular_velocity * dt;
+
+		position += velocity * dt;
+
+		force_accum = { 0, 0 };
+	}
+};
+
+
 int main() 
 {
 	Vector2u window_size = { 1000, 700 };
@@ -491,7 +404,7 @@ int main()
 
 	Ball* ball1 = new Ball(20, {100, 10});
 	ball1->SetColor(Color::White);
-	Ball* ball2 = new Ball(20, { 100, 30 });
+	Ball* ball2 = new Ball(60, { 100, 300 });
 	ball1->SetColor(Color::White);
 	Clock clock;
 
@@ -514,6 +427,7 @@ int main()
 			Vector2i mouse_pos = Mouse::getPosition(window);
 			m.MousePush(Vector2f(mouse_pos.x, mouse_pos.y), 200.0f, 100000.0f);
 		}
+
 		else if (Mouse::isButtonPressed(Mouse::Button::Right))
 		{
 			Vector2i mouse_pos = Mouse::getPosition(window);
