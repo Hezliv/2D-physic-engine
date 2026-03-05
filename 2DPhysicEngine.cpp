@@ -10,13 +10,13 @@ using namespace sf;
 
 
 
-class IMouseTouchable
-{
-public:
-	virtual Vector2f GetCenter() = 0;
-	virtual Vector2f GetSize() = 0;
-	virtual void AddForce(Vector2f force) = 0;
-};
+//class IMouseTouchable
+//{
+//public:
+//	virtual Vector2f GetCenter() = 0;
+//	virtual Vector2f GetSize() = 0;
+//	virtual void AddForce(Vector2f force) = 0;
+//};
 
 class AABB // it's border for collisions
 {
@@ -26,17 +26,45 @@ class AABB // it's border for collisions
 class ResultOfCollision //!!!!!!!!!!!!! to finish writing accessors
 {
 	Vector2f normal;
-	float penetration;
+	float penetration; // the distance over which they intersect
 	Vector2f contact_point;
 public:
 	void SetNormal(Vector2f normal)
 	{
 		this->normal = normal;
 	}
+
+	void SetPenetration(float penetration) 
+	{
+		this->penetration = penetration;
+	}
+
+	void SetContactPoint(Vector2f contact_point)
+	{
+		this->contact_point = contact_point;
+	}
+
+	Vector2f GetNormal()
+	{
+		return normal;
+	}
+
+	float GetPenetration() 
+	{
+		return penetration;
+	}
+
+	Vector2f GetContactPoint()
+	{
+		return contact_point;
+	}
 };
 
-class Collider 
+class Collider  // it's borders to object
 {
+protected:
+	float height;
+	float width;
 public:
 	virtual ~Collider() = default;
 
@@ -47,6 +75,68 @@ public:
 	enum class Type {Circle, Box};
 
 	virtual Type GetType() const = 0;
+
+	void SetHeight(float height)
+	{
+		this->height = height;
+	}
+
+	void SetWidth(float width)
+	{
+		this->width = width;
+	}
+
+	float GetHeight()
+	{
+		return height;
+	}
+
+	float GetWidth()
+	{
+		return width;
+	}
+};
+
+class CircleCollider : public Collider
+{
+	float radius;
+public:
+	CircleCollider(float radius) : radius(radius) {}
+
+	virtual Type GetType() const override
+	{
+		return Type::Circle;
+	}
+
+	virtual bool Intersects(Collider& other, Vector2f self_pos, Vector2f other_pos, ResultOfCollision& res) override
+	{
+		return true;
+
+	}
+
+	virtual AABB GetAABB(Vector2f pos) override 
+	{
+		return AABB();
+	}
+
+	float GetWidth()
+	{
+		return radius * 2;
+	}
+
+	float GetHeight()
+	{
+		return radius * 2;
+	}
+};
+
+class BoxCollider : public Collider 
+{
+public:
+	virtual Type GetType() const override
+	{
+		return Type::Box;
+	}
 };
 
 class PhysBody 
@@ -55,8 +145,6 @@ protected:
 	Collider* collider;
 	float mass;
 	float inv_mass;
-	float height;
-	float width;
 	Vector2f position;
 	Vector2f velocity = { 0, 0 }; // speed
 	Vector2f acceleration = { 0, 0 }; //ускорение
@@ -114,14 +202,34 @@ public:
 		this->inv_mass = inv_mass;
 	}
 
-	void SetHeight(float height)
+	void SetAngle(float angle)
 	{
-		this->height = height;
+		this->angle = angle;
 	}
 
-	void SetWidth(float width)
+	void SetAngularVelocity(float angular_velocity)
 	{
-		this->width = width;
+		this->angular_velocity = angular_velocity;
+	}
+
+	void SetCollider(Collider* collider)
+	{
+		this->collider = collider;
+	}
+
+	Collider* GetCollider()
+	{
+		return collider;
+	}
+
+	float GetAngle()
+	{
+		return angle;
+	}
+
+	float GetAngular_velocity()
+	{
+		return angular_velocity;
 	}
 
 	Vector2f GetPosition()
@@ -137,16 +245,6 @@ public:
 	float GetInvMass()
 	{
 		return inv_mass;
-	}
-
-	float GetHeight()
-	{
-		return height;
-	}
-
-	float GetWidth()
-	{
-		return width;
 	}
 
 	Vector2f GetVelocity()
@@ -176,7 +274,7 @@ public:
 
 	Vector2f GetCenter()
 	{
-		return position + Vector2f(width / 2.0f, height / 2.0f);
+		return position /*+ Vector2f(collider->GetWidth() / 2.0f, collider->GetHeight() / 2.0f)*/;
 	}
 };
 
@@ -188,13 +286,19 @@ class SoftBody : public PhysBody // soft body like jelly
 class RigidBody : public PhysBody // tough object
 {	
 public:
-	RigidBody(float width, float height, Vector2f position)
+	RigidBody(Collider* collider, float width, float height, Vector2f position)
 	{
-		height = height;
-		width = width;
-		this->collider->position = position;
+		this->collider = collider;
+		collider->SetHeight(height);
+		collider->SetWidth(width);
+		this->position = position;
+
 		mass = (0.5 * height * height * M_PI) / 1000;
 		inv_mass = 1 / mass;
+	}
+
+	~RigidBody() {
+
 	}
 	
 	Vector2f GetPosition()
@@ -213,13 +317,8 @@ class Sensor : public PhysBody // it's transparency, but it indicates if some bo
 
 };
 
-
-// rewrite method KeepInBounds because of problem with stucking circle objects
-// organize code, transfer methods which useful for circle objects to their own class
-//rewrite interaction
-
 class MouseInteraction {
-	vector<IMouseTouchable*> objects;
+	vector<PhysBody*> objects;
 	Vector2u window_size;
 public:
 	MouseInteraction(Vector2u window_size) : window_size(window_size) {}
@@ -245,7 +344,7 @@ public:
 				float dist = sqrt(dist_sq);
 				Vector2f force = (diff / dist) * (strength / dist);
 
-				if (i->GetCenter().y + i->GetSize().y / 2 != window_size.y && force.y > 0)
+				if (i->GetCenter().y + i->GetCollider()->GetHeight() / 2 != window_size.y && force.y > 0)
 					force.y = 0;
 
 				i->AddForce(force);
@@ -254,12 +353,12 @@ public:
 		}
 	}
 
-	void AddObject(IMouseTouchable* phys_obj)
+	void AddObject(PhysBody* phys_obj)
 	{
 		objects.push_back(phys_obj);
 	}
 
-	void DeleteObject(IMouseTouchable* obj)
+	void DeleteObject(PhysBody* obj)
 	{
 		for (int i = 0; i < objects.size(); i++)
 		{
@@ -274,6 +373,7 @@ public:
 
 class PhysicEngine
 {
+	vector<PhysBody*> bodies;
 	Vector2f gravity = { 0, 600.0f }; //for monitor would be better use 980 raither our 9.8 for gravity, here I use 400 for more smooth but not like in moon(300.0f)
 	Vector2u size; // size to which will rules of physic engine works
 	float resistance = 0.95f; // ground resistance
@@ -339,34 +439,34 @@ public:
 
 	void BoundCollision(PhysBody* obj, float dt)
 	{
-		if (obj->GetCenter().x + (obj->GetHeight() / 2) >= size.x)
+		if (obj->GetCenter().x + (obj->GetCollider()->GetHeight() / 2) >= size.x)
 		{
-			obj->SetPosition({ size.x - (obj->GetHeight() / 2), obj->GetPosition().y });
+			obj->SetPosition({ size.x - (obj->GetCollider()->GetHeight() / 2), obj->GetPosition().y });
 			if (obj->GetVelocity().x > 0) obj->SetVelocity({ -obj->GetVelocity().x * obj->GetResilience(), obj->GetVelocity().y });
 		}
 
-		else if (obj->GetCenter().x + (obj->GetHeight() / 2) <= 0)
+		else if (obj->GetCenter().x - (obj->GetCollider()->GetHeight() / 2) <= 0)
 		{
-			position.x = width / 2;
-			if (velocity.x < 0) velocity.x = -velocity.x * resilience;
+			obj->SetPosition({ obj->GetCollider()->GetWidth() / 2, obj->GetPosition().y });
+			if (obj->GetVelocity().x < 0) obj->SetVelocity({ -obj->GetVelocity().x * obj->GetResilience(), obj->GetVelocity().y });
 		}
 
-		if (obj->GetCenter().y + (obj->GetHeight() / 2) >= size.y)
+		if (obj->GetCenter().y + (obj->GetCollider()->GetHeight() / 2) >= size.y)
 		{
-			obj->SetPosition({ obj->GetPosition().x, size.y - (obj->GetHeight() / 2) });
+			obj->SetPosition({ obj->GetPosition().x, size.y - (obj->GetCollider()->GetHeight() / 2) });
 			if (obj->GetVelocity().y > 0)
 			{
 				obj->SetVelocity({ obj->GetVelocity().x, -obj->GetVelocity().y * obj->GetResilience() });
 				float rolling_frict = 0.95f;
-				velocity.x *= pow(rolling_frict, dt * 10.0f);
+				obj->SetVelocity({ obj->GetVelocity().x * pow(rolling_frict, dt * 10.0f), obj->GetVelocity().y });
 			}
-			if (abs(velocity.y) < 5.0f) velocity.y = 0;
+			if (abs(obj->GetVelocity().y) < 5.0f) obj->SetVelocity({ obj->GetVelocity().x, 0 });
 		}
 
-		else if (obj->GetCenter().y + (obj->GetHeight() / 2) <= 0)
+		else if (obj->GetCenter().y - (obj->GetCollider()->GetHeight() / 2) <= 0)
 		{
-			position.y = height / 2;
-			if (velocity.y < 0) velocity.y = -velocity.y * resilience;
+			obj->SetPosition({ obj->GetPosition().x, obj->GetCollider()->GetHeight() / 2 });
+			if (obj->GetVelocity().y < 0) obj->SetVelocity({ obj->GetVelocity().x, -obj->GetVelocity().y * obj->GetResilience() });
 
 		}
 	}
@@ -376,22 +476,22 @@ public:
 		return sqrt(pow(first.x - second.x, 2) + pow(first.y - second.y, 2));
 	}
 
-	void Integration(PhysicEngine* eng, float dt)
+	void Integration(PhysBody* obj, float dt)
 	{
 		if (dt > 0.1f) dt = 0.1f;
 
-		Vector2f drag_force = -velocity * eng->GetAirResistance();
-		Vector2f Ftotal = force_accum + (eng->GetGravity() * mass) + drag_force;
+		Vector2f drag_force = -obj->GetVelocity() * GetAirResistance();
+		Vector2f Ftotal = obj->GetForce() + (GetGravity() * obj->GetMass()) + drag_force;
 
-		acceleration = Ftotal / mass;
+		obj->SetAcceleration(Ftotal * obj->GetInvMass());
 
-		velocity += acceleration * dt;
-		angular_velocity = velocity.x / (width / 2.0f);
-		angle += angular_velocity * dt;
+		obj->SetVelocity(obj->GetVelocity() + obj->GetAcceleration() * dt);
+		obj->SetAngularVelocity(obj->GetVelocity().x / (obj->GetCollider()->GetWidth() / 2.0f));
+		obj->SetAngle(obj->GetAngle() + obj->GetAngular_velocity() * dt);
 
-		position += velocity * dt;
+		obj->SetPosition(obj->GetPosition() + obj->GetVelocity() * dt);
 
-		force_accum = { 0, 0 };
+		obj->SetForce({ 0, 0 });
 	}
 };
 
@@ -402,15 +502,17 @@ int main()
 	RenderWindow window = RenderWindow(VideoMode(window_size), "PhysicEngine");
 	PhysicEngine eng = PhysicEngine(window_size);
 
-	Ball* ball1 = new Ball(20, {100, 10});
-	ball1->SetColor(Color::White);
-	Ball* ball2 = new Ball(60, { 100, 300 });
-	ball1->SetColor(Color::White);
+	CircleShape* circle1 = new CircleShape(20);
+	circle1->setFillColor(Color::White);
+	circle1->setPosition({ 100, 20 });
+	circle1->setOrigin({circle1->getRadius(), circle1->getRadius() });
+	Collider* collid = new CircleCollider(circle1->getRadius());
+	RigidBody* circle_body1 = new RigidBody(collid, circle1->getRadius() * 2, circle1->getRadius() * 2, circle1->getPosition());
+	
 	Clock clock;
 
 	MouseInteraction m(window_size);
-	m.AddObject(ball1);
-	m.AddObject(ball2);
+	m.AddObject(circle_body1);
 
 	while (window.isOpen())
 	{
@@ -434,13 +536,11 @@ int main()
 			m.MousePush(Vector2f(mouse_pos.x, mouse_pos.y), window_size.x, 1000000.0f, 0);
 		}
 
-		ball1->ResolveCollision(ball2);
+		eng.Integration(circle_body1, dt);
+		eng.BoundCollision(circle_body1, dt);
+		circle1->setPosition(circle_body1->GetPosition());
 
-		ball1->Update(&eng, dt);
-		ball2->Update(&eng, dt);
-
-		window.draw(ball1->GetVisual());
-		window.draw(ball2->GetVisual());
+		window.draw(*circle1);
 		window.display();
 	}
 }
