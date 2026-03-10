@@ -3,27 +3,18 @@
 #include <iostream>
 #include <math.h>
 #include <vector>
+#include <tuple>
 
 # define M_PI 3.141592653589793238462643383279502884L
 using namespace std;
 using namespace sf;
-
-
-
-//class IMouseTouchable
-//{
-//public:
-//	virtual Vector2f GetCenter() = 0;
-//	virtual Vector2f GetSize() = 0;
-//	virtual void AddForce(Vector2f force) = 0;
-//};
 
 class AABB // it's border for collisions
 {
 
 };
 
-class ResultOfCollision //!!!!!!!!!!!!! to finish writing accessors
+class ResultOfCollision
 {
 	Vector2f normal;
 	float penetration; // the distance over which they intersect
@@ -65,10 +56,11 @@ class Collider  // it's borders to object
 protected:
 	float height;
 	float width;
+	Vector2f position; // center of shape
 public:
 	virtual ~Collider() = default;
 
-	virtual bool Intersects(Collider& other, Vector2f self_pos, Vector2f other_pos, ResultOfCollision& res) = 0;
+	virtual bool Intersects(Collider* other) = 0;
 
 	virtual AABB GetAABB(Vector2f pos) = 0;
 
@@ -84,6 +76,16 @@ public:
 	void SetWidth(float width)
 	{
 		this->width = width;
+	}
+
+	void SetPosition(Vector2f position)
+	{
+		this->position = position;
+	}
+
+	Vector2f GetPosition()
+	{
+		return position;
 	}
 
 	float GetHeight()
@@ -108,10 +110,13 @@ public:
 		return Type::Circle;
 	}
 
-	virtual bool Intersects(Collider& other, Vector2f self_pos, Vector2f other_pos, ResultOfCollision& res) override
+	virtual bool Intersects(Collider* other) override
 	{
-		return true;
-
+		float distance_radius = this->radius + (other->GetWidth() / 2);
+		float distance_centers = sqrt(pow(this->GetPosition().x - other->GetPosition().x, 2) + pow(this->GetPosition().y - other->GetPosition().y, 2));
+		
+		//cout << distance_radius << "  " << distance_centers << "\n";
+		return distance_radius < distance_centers ? false : true;
 	}
 
 	virtual AABB GetAABB(Vector2f pos) override 
@@ -291,15 +296,14 @@ public:
 		this->collider = collider;
 		collider->SetHeight(height);
 		collider->SetWidth(width);
+		collider->SetPosition(position);
 		this->position = position;
 
 		mass = (0.5 * height * height * M_PI) / 1000;
 		inv_mass = 1 / mass;
 	}
 
-	~RigidBody() {
-
-	}
+	~RigidBody() {}
 	
 	Vector2f GetPosition()
 	{
@@ -371,18 +375,47 @@ public:
 	}
 };
 
+class Entity
+{
+	PhysBody* body;
+	Shape* visual;
+public:
+	Entity(Shape* visual, PhysBody* body) : body(body), visual(visual) {}
+	Entity() : Entity(nullptr, nullptr) {}
+
+	void SetVisual(Shape* visual)
+	{
+		this->visual = visual;
+	}
+
+	Shape* GetVisual()
+	{
+		return visual;
+	}
+
+	void SetPhysBody(PhysBody* body)
+	{
+		this->body = body;
+	}
+
+	PhysBody* GetPhysBody()
+	{
+		return body;
+	}
+};
+
 class PhysicEngine
 {
 	vector<PhysBody*> bodies;
 	Vector2f gravity = { 0, 600.0f }; //for monitor would be better use 980 raither our 9.8 for gravity, here I use 400 for more smooth but not like in moon(300.0f)
-	Vector2u size; // size to which will rules of physic engine works
-	float resistance = 0.95f; // ground resistance
+	Vector2u size; // size of engine
+	float resistance = 0.98f; // ground resistance
 	float air_resistance = 0.01f;
 public:
 
 	PhysicEngine(Vector2u size) : size(size) {}
 
-	void SetGravity(Vector2f& gravity)
+	void SetGravity(Vector2f gravity)
 	{
 		this->gravity = gravity;
 	}
@@ -422,26 +455,52 @@ public:
 		return air_resistance;
 	}
 
-	void SetSize(Vector2u size)
+	void CollisionSolve(Entity* obj1, Entity* obj2)
 	{
-		this->size = size;
+		if (obj1->GetPhysBody()->GetCollider()->Intersects(obj2->GetPhysBody()->GetCollider()))
+		{
+			float distance = obj1->GetPhysBody()->GetPosition().x * obj1->GetPhysBody()->GetPosition().y - obj2->GetPhysBody()->GetPosition().x * obj2->GetPhysBody()->GetPosition().y;
+			//cout << "intersects\n";
+			float push = (obj1->GetPhysBody()->GetCollider()->GetWidth() / 2) + (obj2->GetPhysBody()->GetCollider()->GetWidth() / 2);
+			obj1->GetPhysBody()->SetVelocity(-obj1->GetPhysBody()->GetVelocity());
+			obj2->GetPhysBody()->SetVelocity(-obj2->GetPhysBody()->GetVelocity());// rewrite this collision
+			if (distance < 0) // obj1 is more left and below than obj2
+			{
+				//obj1->GetPhysBody()->SetPosition(push - distance);
+
+			}
+			else
+			{
+
+			}
+		}
 	}
 
-	void CollisionSolve()
+	void Step(vector<Entity*>& obj, float dt)
 	{
-
+		for(int i = 0; i < obj.size(); i++)
+		{
+			Integration(obj[i]->GetPhysBody(), dt);
+			BoundCollision(obj[i]->GetPhysBody(), dt);
+			if(i < obj.size() - 1)
+				CollisionSolve(obj[i], obj[i + 1]);
+			obj[i]->GetVisual()->setPosition(obj[i]->GetPhysBody()->GetPosition());
+		}
 	}
 
-	void Step()
+	void Render(vector<Entity*>& obj,RenderWindow* window)
 	{
-
+		for (auto i : obj)
+		{
+			window->draw(*i->GetVisual());
+		}
 	}
 
 	void BoundCollision(PhysBody* obj, float dt)
 	{
 		if (obj->GetCenter().x + (obj->GetCollider()->GetHeight() / 2) >= size.x)
 		{
-			obj->SetPosition({ size.x - (obj->GetCollider()->GetHeight() / 2), obj->GetPosition().y });
+			obj->SetPosition({ size.x - (obj->GetCollider()->GetHeight() / 2), obj->GetPosition().y});
 			if (obj->GetVelocity().x > 0) obj->SetVelocity({ -obj->GetVelocity().x * obj->GetResilience(), obj->GetVelocity().y });
 		}
 
@@ -491,6 +550,7 @@ public:
 
 		obj->SetPosition(obj->GetPosition() + obj->GetVelocity() * dt);
 
+		obj->GetCollider()->SetPosition(obj->GetPosition());
 		obj->SetForce({ 0, 0 });
 	}
 };
@@ -498,21 +558,30 @@ public:
 
 int main() 
 {
-	Vector2u window_size = { 1000, 700 };
-	RenderWindow window = RenderWindow(VideoMode(window_size), "PhysicEngine");
-	PhysicEngine eng = PhysicEngine(window_size);
+	RenderWindow window = RenderWindow(VideoMode({1000, 700}), "PhysicEngine");
+	PhysicEngine eng = PhysicEngine(window.getSize());
 
 	CircleShape* circle1 = new CircleShape(20);
 	circle1->setFillColor(Color::White);
 	circle1->setPosition({ 100, 20 });
 	circle1->setOrigin({circle1->getRadius(), circle1->getRadius() });
-	Collider* collid = new CircleCollider(circle1->getRadius());
-	RigidBody* circle_body1 = new RigidBody(collid, circle1->getRadius() * 2, circle1->getRadius() * 2, circle1->getPosition());
-	
+	CircleShape* circle2 = new CircleShape(20);
+	circle2->setFillColor(Color::White);
+	circle2->setPosition({ 100, 200 });
+	circle2->setOrigin({ circle1->getRadius(), circle1->getRadius() });
+	Collider* collid1 = new CircleCollider(circle1->getRadius());
+	Collider* collid2 = new CircleCollider(circle2->getRadius());
+	RigidBody* circle_body1 = new RigidBody(collid1, circle1->getRadius() * 2, circle1->getRadius() * 2, circle1->getPosition());
+	RigidBody* circle_body2 = new RigidBody(collid2, circle1->getRadius() * 2, circle2->getRadius() * 2, circle2->getPosition());
+	Entity* entity1 = new Entity(circle1, circle_body1);
+	Entity* entity2 = new Entity(circle2, circle_body2);
+
+	vector<Entity*> ent = { entity1, entity2 };
 	Clock clock;
 
-	MouseInteraction m(window_size);
-	m.AddObject(circle_body1);
+	MouseInteraction m(window.getSize());
+	for (auto i : ent)
+		m.AddObject(i->GetPhysBody());
 
 	while (window.isOpen())
 	{
@@ -521,7 +590,7 @@ int main()
 		while (optional<Event> event = window.pollEvent())
 		{
 			if (event->is<Event::Closed>())
-				window.close();	
+				window.close();
 		}
 
 		if (Mouse::isButtonPressed(Mouse::Button::Left))
@@ -533,14 +602,14 @@ int main()
 		else if (Mouse::isButtonPressed(Mouse::Button::Right))
 		{
 			Vector2i mouse_pos = Mouse::getPosition(window);
-			m.MousePush(Vector2f(mouse_pos.x, mouse_pos.y), window_size.x, 1000000.0f, 0);
+			m.MousePush(Vector2f(mouse_pos.x, mouse_pos.y), window.getSize().x, 1000000.0f, 0);
 		}
 
-		eng.Integration(circle_body1, dt);
-		eng.BoundCollision(circle_body1, dt);
-		circle1->setPosition(circle_body1->GetPosition());
-
-		window.draw(*circle1);
+		eng.Step(ent, dt);
+		eng.Render(ent, &window);
 		window.display();
+	
 	}
+
+	
 }
