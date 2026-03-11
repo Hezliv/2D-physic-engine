@@ -455,24 +455,35 @@ public:
 		return air_resistance;
 	}
 
-	void CollisionSolve(Entity* obj1, Entity* obj2)
+	void CollisionSolve(Entity* obj1, Entity* obj2, float dt)
 	{
 		if (obj1->GetPhysBody()->GetCollider()->Intersects(obj2->GetPhysBody()->GetCollider()))
 		{
-			float distance = obj1->GetPhysBody()->GetPosition().x * obj1->GetPhysBody()->GetPosition().y - obj2->GetPhysBody()->GetPosition().x * obj2->GetPhysBody()->GetPosition().y;
-			//cout << "intersects\n";
-			float push = (obj1->GetPhysBody()->GetCollider()->GetWidth() / 2) + (obj2->GetPhysBody()->GetCollider()->GetWidth() / 2);
-			obj1->GetPhysBody()->SetVelocity(-obj1->GetPhysBody()->GetVelocity());
-			obj2->GetPhysBody()->SetVelocity(-obj2->GetPhysBody()->GetVelocity());// rewrite this collision
-			if (distance < 0) // obj1 is more left and below than obj2
+			Vector2f delta = obj2->GetPhysBody()->GetPosition() - obj1->GetPhysBody()->GetPosition();
+			float distance = sqrt(delta.x * delta.x + delta.y * delta.y);
+			if (distance > 0)
 			{
-				//obj1->GetPhysBody()->SetPosition(push - distance);
+				Vector2f collision_normal = delta / distance;
+				Vector2f collision_normal2 = -collision_normal;
+				float push = (obj1->GetPhysBody()->GetCollider()->GetWidth() / 2) + (obj2->GetPhysBody()->GetCollider()->GetWidth() / 2) - distance;
+				
+				Vector2f v1 = obj1->GetPhysBody()->GetVelocity();
+				Vector2f v2 = obj2->GetPhysBody()->GetVelocity();
 
-			}
-			else
-			{
+				float dot1 = v1.x * collision_normal .x + v1.y * collision_normal.y;
+				float dot2 = v2.x * collision_normal2.x + v2.y * collision_normal2.y;
 
-			}
+				Vector2f reflect_velocity1 = v1 - 2.0f * dot1 * collision_normal;
+				Vector2f reflect_velocity2 = v2 - 2.0f * dot2 * collision_normal2;
+
+				obj1->GetPhysBody()->SetVelocity(reflect_velocity1 * obj1->GetPhysBody()->GetResilience());
+				obj2->GetPhysBody()->SetVelocity(reflect_velocity2 * obj2->GetPhysBody()->GetResilience());
+
+				cout << obj1->GetPhysBody()->GetVelocity().x << " " << obj1->GetPhysBody()->GetVelocity().y << "    " << obj2->GetPhysBody()->GetVelocity().x << " " << obj2->GetPhysBody()->GetVelocity().y << "\n";
+				
+				obj1->GetPhysBody()->SetPosition(obj1->GetPhysBody()->GetPosition() - collision_normal * (push / 2));
+				obj2->GetPhysBody()->SetPosition(obj2->GetPhysBody()->GetPosition() - collision_normal2 * (push / 2));
+			}		
 		}
 	}
 
@@ -483,7 +494,7 @@ public:
 			Integration(obj[i]->GetPhysBody(), dt);
 			BoundCollision(obj[i]->GetPhysBody(), dt);
 			if(i < obj.size() - 1)
-				CollisionSolve(obj[i], obj[i + 1]);
+				CollisionSolve(obj[i], obj[i + 1], dt);
 			obj[i]->GetVisual()->setPosition(obj[i]->GetPhysBody()->GetPosition());
 		}
 	}
@@ -498,13 +509,13 @@ public:
 
 	void BoundCollision(PhysBody* obj, float dt)
 	{
-		if (obj->GetCenter().x + (obj->GetCollider()->GetHeight() / 2) >= size.x)
+		if (obj->GetCenter().x + (obj->GetCollider()->GetWidth() / 2) >= size.x)
 		{
-			obj->SetPosition({ size.x - (obj->GetCollider()->GetHeight() / 2), obj->GetPosition().y});
+			obj->SetPosition({ size.x - (obj->GetCollider()->GetWidth() / 2), obj->GetPosition().y});
 			if (obj->GetVelocity().x > 0) obj->SetVelocity({ -obj->GetVelocity().x * obj->GetResilience(), obj->GetVelocity().y });
 		}
 
-		else if (obj->GetCenter().x - (obj->GetCollider()->GetHeight() / 2) <= 0)
+		else if (obj->GetCenter().x - (obj->GetCollider()->GetWidth() / 2) <= 0)
 		{
 			obj->SetPosition({ obj->GetCollider()->GetWidth() / 2, obj->GetPosition().y });
 			if (obj->GetVelocity().x < 0) obj->SetVelocity({ -obj->GetVelocity().x * obj->GetResilience(), obj->GetVelocity().y });
@@ -516,7 +527,7 @@ public:
 			if (obj->GetVelocity().y > 0)
 			{
 				obj->SetVelocity({ obj->GetVelocity().x, -obj->GetVelocity().y * obj->GetResilience() });
-				float rolling_frict = 0.95f;
+				float rolling_frict = 0.98f;
 				obj->SetVelocity({ obj->GetVelocity().x * pow(rolling_frict, dt * 10.0f), obj->GetVelocity().y });
 			}
 			if (abs(obj->GetVelocity().y) < 5.0f) obj->SetVelocity({ obj->GetVelocity().x, 0 });
@@ -565,14 +576,14 @@ int main()
 	circle1->setFillColor(Color::White);
 	circle1->setPosition({ 100, 20 });
 	circle1->setOrigin({circle1->getRadius(), circle1->getRadius() });
-	CircleShape* circle2 = new CircleShape(20);
+	CircleShape* circle2 = new CircleShape(30);
 	circle2->setFillColor(Color::White);
 	circle2->setPosition({ 100, 200 });
-	circle2->setOrigin({ circle1->getRadius(), circle1->getRadius() });
+	circle2->setOrigin({ circle2->getRadius(), circle2->getRadius() });
 	Collider* collid1 = new CircleCollider(circle1->getRadius());
 	Collider* collid2 = new CircleCollider(circle2->getRadius());
 	RigidBody* circle_body1 = new RigidBody(collid1, circle1->getRadius() * 2, circle1->getRadius() * 2, circle1->getPosition());
-	RigidBody* circle_body2 = new RigidBody(collid2, circle1->getRadius() * 2, circle2->getRadius() * 2, circle2->getPosition());
+	RigidBody* circle_body2 = new RigidBody(collid2, circle2->getRadius() * 2, circle2->getRadius() * 2, circle2->getPosition());
 	Entity* entity1 = new Entity(circle1, circle_body1);
 	Entity* entity2 = new Entity(circle2, circle_body2);
 
